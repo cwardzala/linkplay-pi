@@ -3,7 +3,7 @@
 # Usage: curl -sSL https://raw.githubusercontent.com/YOUR_USERNAME/linkplay-pi/main/install.sh | bash
 set -euo pipefail
 
-REPO_URL="https://github.com/YOUR_USERNAME/linkplay-pi"
+REPO_URL="https://github.com/cwardzala/linkplay-pi"
 INSTALL_DIR="$HOME/linkplay-pi"
 SERVICE="nowplaying"
 VENV="$INSTALL_DIR/venv"

@@ -20,7 +20,7 @@ Polls the device every 5 seconds and only refreshes the display when something c
 ## Raspberry Pi setup (one-liner)
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/YOUR_USERNAME/linkplay-pi/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/cwardzala/linkplay-pi/main/install.sh | bash
 ```
 
 The installer will:
