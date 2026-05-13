@@ -8,8 +8,9 @@ Run with --preview to simulate the display locally (no hardware needed).
 
 import argparse
 import os
-import time
 import sys
+import time
+
 import requests
 from PIL import Image, ImageDraw, ImageFont
 
@@ -96,7 +97,7 @@ def load_fonts():
                 "album":  _truetype(inter,    17, weight=400),
                 "meta":   _truetype(inter,    15, weight=400),
             }
-        except (IOError, TypeError):
+        except (OSError, TypeError):
             pass
 
     try:
@@ -106,7 +107,7 @@ def load_fonts():
             "album":  ImageFont.truetype(dejavu,      17),
             "meta":   ImageFont.truetype(dejavu,      15),
         }
-    except (IOError, TypeError):
+    except (OSError, TypeError):
         pass
 
     d = ImageFont.load_default()
@@ -210,7 +211,9 @@ def render(inky, fonts, status):
     draw.rectangle([0, 0, W, HEADER_H], fill=FG)
     header = "NOW PLAYING"
     hw = draw.textlength(header, font=fonts["meta"])
-    draw.text(((W - hw) / 2, (HEADER_H - fonts["meta"].size) / 2), header, font=fonts["meta"], fill=BG)
+    draw.text(
+        ((W - hw) / 2, (HEADER_H - fonts["meta"].size) / 2), header, font=fonts["meta"], fill=BG
+    )
 
     # Idle / no device
     is_idle = (
@@ -220,7 +223,9 @@ def render(inky, fonts, status):
     if is_idle:
         msg = "Nothing Playing" if status else "No Device"
         mw = draw.textlength(msg, font=fonts["artist"])
-        draw.text(((W - mw) / 2, (H - fonts["artist"].size) / 2), msg, font=fonts["artist"], fill=FG)
+        draw.text(
+            ((W - mw) / 2, (H - fonts["artist"].size) / 2), msg, font=fonts["artist"], fill=FG
+        )
         inky.set_image(to_inky_palette(img, inky))
         inky.show()
         return
@@ -296,6 +301,53 @@ def render(inky, fonts, status):
     inky.show()
 
 
+# --- Debouncer ---
+
+class Debouncer:
+    """Coalesces rapid state changes; renders only after state has settled.
+
+    The settle timer starts on the *first* change in a burst and does not
+    reset when subsequent changes arrive. This prevents incremental metadata
+    updates (status → title → artist → album arriving one poll apart) from
+    continuously deferring the render.
+    """
+
+    def __init__(self, settle_secs):
+        self.settle_secs = settle_secs
+        self._queued     = None
+        self._first_seen = None  # time of the first change in this burst
+
+    @property
+    def pending(self):
+        return self._queued is not None
+
+    @property
+    def latest(self):
+        return self._queued
+
+    def see(self, value, now):
+        """Record the latest value. Only starts the timer on the first call."""
+        if self._first_seen is None:
+            self._first_seen = now
+        self._queued = value
+
+    def flush(self, now):
+        """Return and clear the queued value if settled, else None."""
+        if not self.pending or (now - self._first_seen) < self.settle_secs:
+            return None
+        value            = self._queued
+        self._queued     = None
+        self._first_seen = None
+        return value
+
+    def take(self):
+        """Return and clear the queued value immediately, bypassing settle."""
+        value            = self._queued
+        self._queued     = None
+        self._first_seen = None
+        return value
+
+
 # --- Mock display (local preview without hardware) ---
 
 class MockInky:
@@ -325,8 +377,12 @@ class MockInky:
 
 def main():
     parser = argparse.ArgumentParser(description="LinkPlay Now Playing for Inky wHAT")
-    parser.add_argument("--preview", action="store_true", help="Simulate display locally (no hardware)")
-    parser.add_argument("--host", metavar="IP", help="LinkPlay device IP (overrides LINKPLAY_HOST env var)")
+    parser.add_argument(
+        "--preview", action="store_true", help="Simulate display locally (no hardware)"
+    )
+    parser.add_argument(
+        "--host", metavar="IP", help="LinkPlay device IP (overrides LINKPLAY_HOST env var)"
+    )
     args = parser.parse_args()
 
     global DEVICE_URL
@@ -347,40 +403,29 @@ def main():
     fonts = load_fonts()
 
     print(f"Polling {DEVICE_URL} every {POLL_INTERVAL}s (settle delay: {SETTLE_SECS}s)")
-    prev_status    = None
-    queued_status  = None  # latest changed state, waiting to settle
-    last_change_at = None  # monotonic time of most recent change
-    first_run      = True
+    debouncer   = Debouncer(SETTLE_SECS)
+    prev_status = None
+    first_run   = True
 
     while True:
         now    = time.monotonic()
         status = get_player_status()
 
-        # Compare against the queued state (if pending) so rapid transitions
-        # only reset the settle timer, not generate multiple renders.
-        compare = queued_status if queued_status is not None else prev_status
+        compare = debouncer.latest if debouncer.pending else prev_status
         if first_run or needs_update(compare, status):
-            queued_status  = status
-            last_change_at = now
+            debouncer.see(status, now)
 
-        # Render once state has been stable for SETTLE_SECS, or immediately
-        # on first run.
-        stable = (
-            queued_status is not None
-            and last_change_at is not None
-            and (now - last_change_at) >= SETTLE_SECS
-        )
-        if first_run or stable:
-            s      = queued_status or status
+        # On first run render immediately; afterwards wait for settle.
+        s = debouncer.take() if first_run else debouncer.flush(now)
+
+        if s is not None:
             title  = hex_to_str(s.get("Title", ""))  if s else ""
             artist = hex_to_str(s.get("Artist", "")) if s else ""
             print(f"[render] {s.get('status', '?') if s else 'no device'}"
                   f"  {title!r}  {artist!r}")
             render(inky, fonts, s)
-            prev_status    = s
-            queued_status  = None
-            last_change_at = None
-            first_run      = False
+            prev_status = s
+            first_run   = False
 
         time.sleep(POLL_INTERVAL)
 

@@ -1,0 +1,21 @@
+[tool.ruff]
+line-length    = 100
+target-version = "py38"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP"]
+ignore = [
+    "E221",  # aligned assignment spacing — intentional style
+    "UP007", # X | Y union syntax — keep py38 compat
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["F401"]  # unused imports in test helpers are fine
+
+[tool.pytest.ini_options]
+testpaths    = ["tests"]
+addopts      = "-v --tb=short"
+
+[tool.coverage.run]
+source = ["nowplaying"]
+omit   = ["tests/*", "venv/*", "download_fonts.py", "install.sh"]

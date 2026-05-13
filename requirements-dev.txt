@@ -1,0 +1,4 @@
+-r requirements-local.txt
+pytest>=7.0
+pytest-cov
+ruff
