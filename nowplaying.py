@@ -16,7 +16,8 @@ from PIL import Image, ImageDraw, ImageFont
 # --- Config ---
 # Override via --host CLI arg or LINKPLAY_HOST env var
 DEVICE_URL      = f"http://{os.environ.get('LINKPLAY_HOST', '192.168.0.186')}"
-POLL_INTERVAL   = 5
+POLL_INTERVAL   = 3   # seconds between polls
+SETTLE_SECS     = 6   # render only after state is stable for this long
 REQUEST_TIMEOUT = 5
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -345,20 +346,42 @@ def main():
     inky.set_border(inky.WHITE)
     fonts = load_fonts()
 
-    print(f"Polling {DEVICE_URL} every {POLL_INTERVAL}s")
-    prev_status = None
-    first_run   = True
+    print(f"Polling {DEVICE_URL} every {POLL_INTERVAL}s (settle delay: {SETTLE_SECS}s)")
+    prev_status    = None
+    queued_status  = None  # latest changed state, waiting to settle
+    last_change_at = None  # monotonic time of most recent change
+    first_run      = True
 
     while True:
+        now    = time.monotonic()
         status = get_player_status()
-        if first_run or needs_update(prev_status, status):
-            title  = hex_to_str(status.get("Title", ""))  if status else ""
-            artist = hex_to_str(status.get("Artist", "")) if status else ""
-            print(f"[update] {status.get('status', '?') if status else 'no device'}"
+
+        # Compare against the queued state (if pending) so rapid transitions
+        # only reset the settle timer, not generate multiple renders.
+        compare = queued_status if queued_status is not None else prev_status
+        if first_run or needs_update(compare, status):
+            queued_status  = status
+            last_change_at = now
+
+        # Render once state has been stable for SETTLE_SECS, or immediately
+        # on first run.
+        stable = (
+            queued_status is not None
+            and last_change_at is not None
+            and (now - last_change_at) >= SETTLE_SECS
+        )
+        if first_run or stable:
+            s      = queued_status or status
+            title  = hex_to_str(s.get("Title", ""))  if s else ""
+            artist = hex_to_str(s.get("Artist", "")) if s else ""
+            print(f"[render] {s.get('status', '?') if s else 'no device'}"
                   f"  {title!r}  {artist!r}")
-            render(inky, fonts, status)
-            prev_status = status
-            first_run   = False
+            render(inky, fonts, s)
+            prev_status    = s
+            queued_status  = None
+            last_change_at = None
+            first_run      = False
+
         time.sleep(POLL_INTERVAL)
 
 
