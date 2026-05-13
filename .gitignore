@@ -1,0 +1,4 @@
+fonts/
+__pycache__/
+*.pyc
+preview.png

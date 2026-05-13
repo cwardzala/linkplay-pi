@@ -1,0 +1,16 @@
+[Unit]
+Description=LinkPlay Now Playing (Inky wHAT)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/linkplay-pi
+Environment=LINKPLAY_HOST=192.168.0.186
+ExecStart=/usr/bin/python3 /home/pi/linkplay-pi/nowplaying.py
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
