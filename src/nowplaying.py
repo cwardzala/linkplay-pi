@@ -21,8 +21,8 @@ POLL_INTERVAL   = 3   # seconds between polls
 SETTLE_SECS     = 6   # render only after state is stable for this long
 REQUEST_TIMEOUT = 5
 
-_HERE = os.path.dirname(os.path.abspath(__file__))
-_FONTS = os.path.join(_HERE, "fonts")
+_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_FONTS = os.path.join(_ROOT, "fonts")
 
 PLAYBACK_MODES = {
     "0":  "Idle",
