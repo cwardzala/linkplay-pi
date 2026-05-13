@@ -14,8 +14,9 @@ ignore = [
 
 [tool.pytest.ini_options]
 testpaths    = ["tests"]
+pythonpath   = ["src"]
 addopts      = "-v --tb=short"
 
 [tool.coverage.run]
 source = ["nowplaying"]
-omit   = ["tests/*", "venv/*", "download_fonts.py", "install.sh"]
+omit   = ["tests/*", "venv/*", "src/download_fonts.py", "install.sh"]

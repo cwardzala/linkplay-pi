@@ -87,7 +87,7 @@ setup_venv() {
 
 download_fonts() {
     step "Fonts"
-    "$PYTHON" "$INSTALL_DIR/download_fonts.py"
+    "$PYTHON" "$INSTALL_DIR/src/download_fonts.py"
 }
 
 enable_hardware_interfaces() {
@@ -113,7 +113,7 @@ install_service() {
         -e "s|LINKPLAY_HOST=.*|LINKPLAY_HOST=${ip}|" \
         -e "s|^User=.*|User=${user}|" \
         -e "s|WorkingDirectory=.*|WorkingDirectory=${INSTALL_DIR}|" \
-        -e "s|ExecStart=.*|ExecStart=${PYTHON} ${INSTALL_DIR}/nowplaying.py|" \
+        -e "s|ExecStart=.*|ExecStart=${PYTHON} ${INSTALL_DIR}/src/nowplaying.py|" \
         "$target"
 
     sudo systemctl daemon-reload
@@ -159,7 +159,7 @@ main() {
         SERVICE_INSTALLED=true
     else
         warn "Skipping service install. Run manually with:"
-        warn "  $PYTHON $INSTALL_DIR/nowplaying.py --host $ip"
+        warn "  $PYTHON $INSTALL_DIR/src/nowplaying.py --host $ip"
         SERVICE_INSTALLED=false
     fi
 

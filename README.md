@@ -45,7 +45,7 @@ cd linkplay-pi
 **2. Download fonts:**
 
 ```bash
-python3 download_fonts.py
+python3 src/download_fonts.py
 ```
 
 This fetches Playfair Display and Inter from Google Fonts into a local `fonts/` directory. No internet access needed after this step.
@@ -69,13 +69,13 @@ pip3 install -r requirements-local.txt
 **On the Pi:**
 
 ```bash
-python3 nowplaying.py --host 192.168.0.186
+python3 src/nowplaying.py --host 192.168.0.186
 ```
 
 **Local preview** (renders to `preview.png` and opens it — no hardware needed):
 
 ```bash
-python3 nowplaying.py --preview --host 192.168.0.186
+python3 src/nowplaying.py --preview --host 192.168.0.186
 ```
 
 ### Configuring the device IP
@@ -84,9 +84,9 @@ The device IP can be set three ways, in order of precedence:
 
 | Method | Example |
 |--------|---------|
-| `--host` CLI flag | `python3 nowplaying.py --host 192.168.1.50` |
-| `LINKPLAY_HOST` env var | `LINKPLAY_HOST=192.168.1.50 python3 nowplaying.py` |
-| Default in source | Edit `DEVICE_URL` in `nowplaying.py` |
+| `--host` CLI flag | `python3 src/nowplaying.py --host 192.168.1.50` |
+| `LINKPLAY_HOST` env var | `LINKPLAY_HOST=192.168.1.50 python3 src/nowplaying.py` |
+| Default in source | Edit `DEVICE_URL` in `src/nowplaying.py` |
 
 ## Running on boot (systemd)
 
