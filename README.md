@@ -72,11 +72,13 @@ pip3 install -r requirements-local.txt
 python3 src/nowplaying.py --host 192.168.0.186
 ```
 
-**Local preview** (renders to `preview.png` and opens it — no hardware needed):
+**Local development** (opens an emulator window — no hardware needed):
 
 ```bash
-python3 src/nowplaying.py --preview --host 192.168.0.186
+INKY_DISPLAY=what:black python3 src/nowplaying.py --host 192.168.0.186
 ```
+
+The `INKY_DISPLAY` value is `<type>:<colour>` — type is `phat`, `what`, or `impression`; colour is `black`, `red`, or `yellow`.
 
 ### Configuring the device IP
 

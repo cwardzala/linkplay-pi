@@ -348,38 +348,10 @@ class Debouncer:
         return value
 
 
-# --- Mock display (local preview without hardware) ---
-
-class MockInky:
-    WHITE  = 0
-    BLACK  = 1
-    RED    = 2
-    YELLOW = 2
-    width  = 400
-    height = 300
-
-    def set_border(self, *_):
-        pass
-
-    def set_image(self, img):
-        # Apply a display-accurate palette: index 0=white, 1=black, 2=red
-        palette = [255, 255, 255,  0, 0, 0,  255, 0, 0] + [0] * (256 * 3 - 9)
-        img.putpalette(palette)
-        self._img = img.convert("RGB")
-
-    def show(self):
-        self._img.save("preview.png")
-        self._img.show()
-        print("[preview] Saved preview.png")
-
-
 # --- Main loop ---
 
 def main():
     parser = argparse.ArgumentParser(description="LinkPlay Now Playing for Inky wHAT")
-    parser.add_argument(
-        "--preview", action="store_true", help="Simulate display locally (no hardware)"
-    )
     parser.add_argument(
         "--host", metavar="IP", help="LinkPlay device IP (overrides LINKPLAY_HOST env var)"
     )
@@ -389,15 +361,11 @@ def main():
     if args.host:
         DEVICE_URL = f"http://{args.host}"
 
-    if args.preview:
-        inky = MockInky()
-        print("Preview mode — no hardware required")
-    else:
-        try:
-            from inky.auto import auto
-            inky = auto(ask_user=True, verbose=True)
-        except Exception as exc:
-            sys.exit(f"Failed to initialize display: {exc}")
+    try:
+        from display import get_display
+        inky = get_display()
+    except Exception as exc:
+        sys.exit(f"Failed to initialize display: {exc}")
 
     inky.set_border(inky.WHITE)
     fonts = load_fonts()

@@ -1,2 +1,3 @@
 Pillow>=8.0.0
 requests
+inky-emulator @ git+https://github.com/cwardzala/inky-emulator.git
