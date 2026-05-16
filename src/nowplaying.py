@@ -2,11 +2,10 @@
 """
 LinkPlay Now Playing — Raspberry Pi + Inky wHAT
 Polls a LinkPlay device and renders current track info on the e-ink display.
-
-Run with --preview to simulate the display locally (no hardware needed).
 """
 
 import argparse
+import io
 import os
 import sys
 import time
@@ -20,6 +19,8 @@ DEVICE_URL      = f"http://{os.environ.get('LINKPLAY_HOST', '192.168.0.186')}"
 POLL_INTERVAL   = 3   # seconds between polls
 SETTLE_SECS     = 6   # render only after state is stable for this long
 REQUEST_TIMEOUT = 5
+SHOW_ART        = bool(os.environ.get("LINKPLAY_ART"))
+ART_SIZE        = 130  # thumbnail side length in pixels
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _FONTS = os.path.join(_ROOT, "fonts")
@@ -171,6 +172,62 @@ def draw_vinyl(draw, cx, cy, radius):
     draw.ellipse([cx-hr, cy-hr, cx+hr, cy+hr], fill=FG)
 
 
+# --- Cover art ---
+
+_art_cache: dict = {}
+
+
+def fetch_cover_art(artist, album, size):
+    try:
+        resp = requests.get(
+            "https://itunes.apple.com/search",
+            params={"term": f"{artist} {album}", "entity": "album", "limit": 1},
+            timeout=REQUEST_TIMEOUT,
+        )
+        resp.raise_for_status()
+        results = resp.json().get("results", [])
+        if not results:
+            return None
+        url = results[0].get("artworkUrl100", "")
+        if not url:
+            return None
+        url = url.replace("100x100bb", "600x600bb")
+        art = requests.get(url, timeout=REQUEST_TIMEOUT)
+        art.raise_for_status()
+        return Image.open(io.BytesIO(art.content)).convert("L").resize(
+            (size, size), Image.Resampling.LANCZOS
+        )
+    except Exception as exc:
+        print(f"[warn] Cover art: {exc}", file=sys.stderr)
+        return None
+
+
+def get_cover_art(cache_key, artist, album, size):
+    if cache_key not in _art_cache:
+        _art_cache[cache_key] = fetch_cover_art(artist, album, size)
+    return _art_cache[cache_key]
+
+
+def draw_fallback_art(draw, x, y, size):
+    """Placeholder icon drawn when cover art is enabled but unavailable."""
+    pad = size // 6
+    draw.rectangle([x, y, x + size - 1, y + size - 1], outline=FG, width=1)
+    s   = size - pad * 2
+    # Notehead (filled oval, lower-left)
+    nw  = max(6, s // 3)
+    nh  = max(4, s // 4)
+    nx  = x + pad + s // 8
+    ny  = y + pad + s - nh
+    draw.ellipse([nx, ny, nx + nw, ny + nh], fill=FG)
+    # Stem (rectangle, right edge of notehead up to top quarter)
+    sw  = max(1, size // 30)
+    stx = nx + nw - sw
+    sty = y + pad + s // 5
+    draw.rectangle([stx, sty, stx + sw, ny + nh // 2], fill=FG)
+    # Flag (short diagonal line at stem top)
+    draw.line([stx + sw, sty, stx + sw + s // 4, sty + s // 5], fill=FG, width=sw)
+
+
 # --- API ---
 
 def get_player_status():
@@ -254,13 +311,34 @@ def render(inky, fonts, status):
         ly = (content_top + content_bottom - fonts["title"].size) // 2
         draw.text(((W - lw) / 2, ly), label, font=fonts["title"], fill=FG)
     else:
-        # Measure text block for vertical centering
-        title_lines  = wrap_text(draw, title, fonts["title"], W - MARGIN * 2, max_lines=2)
+        # Cover art — cache key is the raw Album hex (already unique per album name),
+        # falling back to Title hex when no album is present.
+        if SHOW_ART:
+            album_hex = (status.get("Album") or "").strip()
+            title_hex = (status.get("Title") or "").strip()
+            cache_key = album_hex if (album_hex and album_hex != "00") else title_hex
+            art_img   = get_cover_art(cache_key, artist, album, ART_SIZE) if cache_key else None
+        else:
+            art_img = None
+
+        art_y = (content_top + content_bottom - ART_SIZE) // 2
+        if SHOW_ART:
+            if art_img:
+                img.paste(art_img, (MARGIN, art_y))
+            else:
+                draw_fallback_art(draw, MARGIN, art_y, ART_SIZE)
+
+        # Text column: right of art when shown, full width otherwise.
+        text_left  = (MARGIN + ART_SIZE + 10) if SHOW_ART else MARGIN
+        text_right = W - MARGIN
+        text_w     = text_right - text_left
+        text_cx    = (text_left + text_right) // 2
+
+        title_lines  = wrap_text(draw, title, fonts["title"], text_w, max_lines=2)
         line_h       = fonts["title"].size + 5
         title_block  = len(title_lines) * line_h
         artist_block = (fonts["artist"].size + 8) if artist else 0
         album_block  = fonts["album"].size if album else 0
-        # +10 for the gap between title and artist drawn below
         block_h      = title_block + 10 + artist_block + album_block
 
         available = content_bottom - content_top
@@ -268,20 +346,20 @@ def render(inky, fonts, status):
 
         for line in title_lines:
             lw = draw.textlength(line, font=fonts["title"])
-            draw.text(((W - lw) / 2, y), line, font=fonts["title"], fill=FG)
+            draw.text((text_cx - lw / 2, y), line, font=fonts["title"], fill=FG)
             y += line_h
         y += 10
 
         if artist:
-            a  = truncate(draw, artist, fonts["artist"], W - MARGIN * 2)
+            a  = truncate(draw, artist, fonts["artist"], text_w)
             aw = draw.textlength(a, font=fonts["artist"])
-            draw.text(((W - aw) / 2, y), a, font=fonts["artist"], fill=FG)
+            draw.text((text_cx - aw / 2, y), a, font=fonts["artist"], fill=FG)
             y += fonts["artist"].size + 8
 
         if album:
-            al  = truncate(draw, album, fonts["album"], W - MARGIN * 2)
+            al  = truncate(draw, album, fonts["album"], text_w)
             alw = draw.textlength(al, font=fonts["album"])
-            draw.text(((W - alw) / 2, y), al, font=fonts["album"], fill=FG)
+            draw.text((text_cx - alw / 2, y), al, font=fonts["album"], fill=FG)
 
     # Footer separator
     draw.line([MARGIN, H - FOOTER_H, W - MARGIN, H - FOOTER_H], fill=FG, width=1)
