@@ -284,7 +284,10 @@ def render(inky, fonts, status):
             ((W - mw) / 2, (H - fonts["artist"].size) / 2), msg, font=fonts["artist"], fill=FG
         )
         inky.set_image(to_inky_palette(img, inky))
-        inky.show()
+        try:
+            inky.show(busy_wait=False)
+        except TypeError:
+            inky.show()
         return
 
     pb_status = status.get("status", "")
@@ -376,7 +379,10 @@ def render(inky, fonts, status):
         draw.text((W - MARGIN - rw, footer_y), right_text, font=fonts["meta"], fill=FG)
 
     inky.set_image(to_inky_palette(img, inky))
-    inky.show()
+    try:
+        inky.show(busy_wait=False)
+    except TypeError:
+        inky.show()
 
 
 # --- Debouncer ---
