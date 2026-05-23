@@ -17,7 +17,7 @@ from PIL import Image, ImageDraw, ImageFont
 # Override via --host CLI arg or LINKPLAY_HOST env var
 DEVICE_URL      = f"http://{os.environ.get('LINKPLAY_HOST') or '192.168.0.186'}"
 POLL_INTERVAL   = 3   # seconds between polls
-SETTLE_SECS     = 6   # render only after state is stable for this long
+SETTLE_SECS     = int(os.environ.get("LINKPLAY_SETTLE") or 2)
 REQUEST_TIMEOUT = 5
 SHOW_ART        = bool(os.environ.get("LINKPLAY_ART"))
 ART_SIZE        = 130  # thumbnail side length in pixels
