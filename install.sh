@@ -79,7 +79,9 @@ clone_or_update() {
 
 setup_venv() {
     step "Python environment"
-    python3 -m venv "$VENV"
+    # --system-site-packages lets the venv use apt-installed packages like
+    # python3-spidev and python3-lgpio without rebuilding them from source.
+    python3 -m venv --system-site-packages "$VENV"
     "$VENV/bin/pip" install --upgrade pip -q
     "$VENV/bin/pip" install -r "$INSTALL_DIR/requirements.txt" -q
     info "Done."

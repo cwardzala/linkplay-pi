@@ -467,8 +467,9 @@ def main():
         if s is not None:
             title  = hex_to_str(s.get("Title", ""))  if s else ""
             artist = hex_to_str(s.get("Artist", "")) if s else ""
+            album  = hex_to_str(s.get("Album", ""))  if s else ""
             print(f"[render] {s.get('status', '?') if s else 'no device'}"
-                  f"  {title!r}  {artist!r}")
+                  f"  {title!r}  {artist!r}  {album!r}")
             render(inky, fonts, s)
             prev_status = s
             first_run   = False
