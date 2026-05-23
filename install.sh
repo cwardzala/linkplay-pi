@@ -25,7 +25,8 @@ hr()    { printf "%s%s%s\n" "$BOLD" "──────────────�
 
 # ── Guards ────────────────────────────────────────────────────────────────────
 require_sudo() {
-    if ! sudo -v 2>/dev/null; then
+    # Redirect sudo's password prompt to the TTY so it works through curl | bash.
+    if ! sudo -v </dev/tty 2>/dev/tty; then
         error "sudo access is required. Run as a user with sudo privileges."
     fi
 }
