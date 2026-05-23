@@ -103,6 +103,15 @@ enable_hardware_interfaces() {
         warn "raspi-config not found — enable I2C and SPI manually:"
         warn "  sudo raspi-config  →  Interface Options"
     fi
+
+    # On Pi OS Bookworm the kernel claims the SPI CS pin, conflicting with
+    # the lgpio-based Inky library. This overlay releases it to userspace.
+    local config
+    config=$([ -f /boot/firmware/config.txt ] && echo /boot/firmware/config.txt || echo /boot/config.txt)
+    if ! grep -q "spi0-0cs" "$config"; then
+        echo "dtoverlay=spi0-0cs" | sudo tee -a "$config" >/dev/null
+        info "Added dtoverlay=spi0-0cs to $config (fixes Inky CS pin conflict)."
+    fi
 }
 
 install_service() {
