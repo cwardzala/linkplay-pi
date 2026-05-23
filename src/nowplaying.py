@@ -15,7 +15,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 # --- Config ---
 # Override via --host CLI arg or LINKPLAY_HOST env var
-DEVICE_URL      = f"http://{os.environ.get('LINKPLAY_HOST', '192.168.0.186')}"
+DEVICE_URL      = f"http://{os.environ.get('LINKPLAY_HOST') or '192.168.0.186'}"
 POLL_INTERVAL   = 3   # seconds between polls
 SETTLE_SECS     = 6   # render only after state is stable for this long
 REQUEST_TIMEOUT = 5
