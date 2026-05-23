@@ -4,7 +4,7 @@ import os
 import sys
 import urllib.request
 
-FONTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts")
+FONTS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "fonts")
 
 # Both are variable fonts that Pillow can load directly.
 # PlayfairDisplay: wght axis (elegant serif, used for title)
